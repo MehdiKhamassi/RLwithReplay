@@ -32,13 +32,13 @@ W = 4;
 logs.memorySweeps = []; % we store L or R for each sweep
 logs.memorySide = []; % we store L or R for each state replayed
 logs.replaySequence = []; % we store the full sequence of replay
-logs.sequence = zeros(7,M.totalDuration); % state action reward replay-duration rule newstate replay-iteration
+logs.sequence = zeros(7,M.totalDuration); % state action reward replay-duration rule newstate replay-cycle
 bufferRPE = []; % we store RPEs during the trial to order the replay buffer
 
 % Draw an initial state
 x = M.departureState; % drand01(M.P0); % randi(M.nS, 1, 1);
 
-% Run learning cycle
+% Run the experiment
 letsContinue = true;
 iter = 1;
 while (letsContinue)
@@ -193,14 +193,14 @@ while (letsContinue)
                 % we store the result of the replay
                 R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                 logs.sequence(4,iter) = nbReplayCycle * R.nS * R.nA; % we store replay duration
-                logs.sequence(7,iter) = nbReplayCycle; % we store replay iterations
+                logs.sequence(7,iter) = nbReplayCycle; % we store replay cycles
                 
             case 2 %% PI as replay method
                 [Q, pol, nbReplayCycle] = PI(R, []);
                 % we store the result of the replay
                 R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                 logs.sequence(4,iter) = nbReplayCycle * R.nS * R.nA; % we store replay duration
-                logs.sequence(7,iter) = nbReplayCycle; % we store replay iterations
+                logs.sequence(7,iter) = nbReplayCycle; % we store replay cycles
         
             %% MF episodeReplay as replay methods
             case 3 % MF forward replay of a sequence in a time window
@@ -210,7 +210,7 @@ while (letsContinue)
                 % we store the result of the replay
                 R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                 logs.sequence(4,iter) = duration; % we store replay duration
-                logs.sequence(7,iter) = nbReplayCycle; % we store replay iterations
+                logs.sequence(7,iter) = nbReplayCycle; % we store replay cycles
                 logs.memorySweeps = [logs.memorySweeps ; [iter sum(buffersweeps==18) sum(buffersweeps==30) length(buffersweeps)]];
                 logs.memorySide = [logs.memorySide ; [iter sum(bufferside==18) sum(bufferside==30) length(bufferside)]];
                 durationReplaySequence = size(replaybuffer(1,:),2);
@@ -229,14 +229,14 @@ while (letsContinue)
                     % we store the result of the replay
                     R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                     logs.sequence(4,iter) = duration; % we store replay duration
-                    logs.sequence(7,iter) = nbReplayCycle; % we store replay iterations
+                    logs.sequence(7,iter) = nbReplayCycle; % we store replay cycles
                     logs.memorySweeps = [logs.memorySweeps ; [iter sum(buffersweeps==18) sum(buffersweeps==30) length(buffersweeps)]];
                     logs.memorySide = [logs.memorySide ; [iter sum(bufferside==18) sum(bufferside==30) length(bufferside)]];
                     durationReplaySequence = size(replaybuffer(1,:),2);
                     logs.replaySequence = [logs.replaySequence ; [iter nbReplayCycle durationReplaySequence 1 ones(1,R.window-4)] ; [replaybuffer(1,:) ones(1,R.window-durationReplaySequence)*-1]]; % we store the full sequence of replay
                 else
                     logs.sequence(4,iter) = 0; % we store replay duration
-                    logs.sequence(7,iter) = 0; % we store replay iterations
+                    logs.sequence(7,iter) = 0; % we store replay cycles
                 end
                 
             case 7 % MF Shuffled replay
@@ -248,7 +248,7 @@ while (letsContinue)
                 % we store the result of the replay
                 R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                 logs.sequence(4,iter) = duration; % we store replay duration
-                logs.sequence(7,iter) = nbReplayCycle; % we store replay iterations
+                logs.sequence(7,iter) = nbReplayCycle; % we store replay cycles
                 logs.memorySweeps = [logs.memorySweeps ; [iter sum(buffersweeps==18) sum(buffersweeps==30) length(buffersweeps)]];
                 logs.memorySide = [logs.memorySide ; [iter sum(bufferside==18) sum(bufferside==30) length(bufferside)]];
                 durationReplaySequence = size(replaybuffer(1,:),2);
@@ -262,7 +262,7 @@ while (letsContinue)
                 % we store the result of the replay
                 R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                 logs.sequence(4,iter) = duration; % we store replay duration
-                logs.sequence(7,iter) = nbReplayCycle; % we store replay iterations
+                logs.sequence(7,iter) = nbReplayCycle; % we store replay cycles
                 logs.memorySweeps = [logs.memorySweeps ; [iter sum(buffersweeps==18) sum(buffersweeps==30) length(buffersweeps)]];
                 logs.memorySide = [logs.memorySide ; [iter sum(bufferside==18) sum(bufferside==30) length(bufferside)]];
                 durationReplaySequence = size(replaybuffer(1,:),2);
@@ -282,14 +282,14 @@ while (letsContinue)
                     % we store the result of the replay
                     R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                     logs.sequence(4,iter) = size(replaybuffer(1,:),2); % we store replay duration
-                    logs.sequence(7,iter) = nbReplayCycle; % we store replay iterations
+                    logs.sequence(7,iter) = nbReplayCycle; % we store replay cycles
                     logs.memorySweeps = [logs.memorySweeps ; [iter sum(buffersweeps==18) sum(buffersweeps==30) length(buffersweeps)]];
                     logs.memorySide = [logs.memorySide ; [iter sum(bufferside==18) sum(bufferside==30) length(bufferside)]];
                     durationReplaySequence = size(replaybuffer(1,:),2);
                     logs.replaySequence = [logs.replaySequence ; [iter nbReplayCycle durationReplaySequence 1 ones(1,M.logSequenceLength-4)] ; [replaybuffer(1,1:min(M.logSequenceLength,durationReplaySequence)) ones(1,M.logSequenceLength-durationReplaySequence)*-1]]; % we store the full sequence of replay
                 else
                     logs.sequence(4,iter) = 0; % we store replay duration
-                    logs.sequence(7,iter) = 0; % we store replay iterations
+                    logs.sequence(7,iter) = 0; % we store replay cycles
                 end
                 
             case {8,14} %% MB-RL/Dyna-RL shuffled: VI with shuffled state
@@ -299,7 +299,7 @@ while (letsContinue)
                 % we store the result of the replay
                 R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                 logs.sequence(4,iter) = size(replaybuffer(1,:),2)-1; % we store replay duration
-                logs.sequence(7,iter) = nbReplayCycle; % we store replay iterations
+                logs.sequence(7,iter) = nbReplayCycle; % we store replay cycles
                 logs.memorySweeps = [logs.memorySweeps ; [iter sum(buffersweeps==18) sum(buffersweeps==30) length(buffersweeps)]];
                 logs.memorySide = [logs.memorySide ; [iter sum(bufferside==18) sum(bufferside==30) length(bufferside)]];
                 durationReplaySequence = size(replaybuffer(1,:),2)-1;
@@ -312,7 +312,7 @@ while (letsContinue)
                 % we store the result of the replay
                 R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                 logs.sequence(4,iter) = size(replaybuffer(1,:),2)-1; % we store replay duration
-                logs.sequence(7,iter) = nbReplayCycle; % we store replay iterations
+                logs.sequence(7,iter) = nbReplayCycle; % we store replay cycles
                 logs.memorySweeps = [logs.memorySweeps ; [iter sum(buffersweeps==18) sum(buffersweeps==30) length(buffersweeps)]];
                 logs.memorySide = [logs.memorySide ; [iter sum(bufferside==18) sum(bufferside==30) length(bufferside)]];
                 durationReplaySequence = size(replaybuffer(1,:),2)-1;
@@ -330,7 +330,7 @@ while (letsContinue)
                 % we store the result of the replay
                 R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                 logs.sequence(4,iter) = size(replaybuffer(1,:),2)-1; % we store replay duration
-                logs.sequence(7,iter) = nbReplayCycle; % we store replay iterations
+                logs.sequence(7,iter) = nbReplayCycle; % we store replay cycles
                 logs.memorySweeps = [logs.memorySweeps ; [iter sum(buffersweeps==18) sum(buffersweeps==30) length(buffersweeps)]];
                 logs.memorySide = [logs.memorySide ; [iter sum(bufferside==18) sum(bufferside==30) length(bufferside)]];
                 durationReplaySequence = size(replaybuffer(1,:),2)-1;
@@ -338,11 +338,11 @@ while (letsContinue)
                 
             otherwise % no replay
                 logs.sequence(4,iter) = 0; % we store replay duration
-                logs.sequence(7,iter) = 0; % we store replay iterations
+                logs.sequence(7,iter) = 0; % we store replay cycles
         end % end of switch(replayMethod)
     else
         logs.sequence(4,iter) = 0; % null replay duration
-        logs.sequence(7,iter) = 0; % null replay iteration
+        logs.sequence(7,iter) = 0; % null replay cycle
     end
     
     % The next state becomes the current state
