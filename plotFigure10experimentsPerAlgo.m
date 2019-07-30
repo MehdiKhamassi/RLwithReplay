@@ -38,12 +38,12 @@ if (~dataAlreadySaved)
         load([preFixDirectoryName modelName '/' preFixFileName modelName '_Expe' num2str(iii) '.mat'])
 
         % then process and store the experiment's data in the buffers
-        boubou = compteurs(:,3)+max(0,compteurs(:,4)-100);
-        TC = argmax(compteurs(:,5)==53);
+        boubou = counters(:,3)+max(0,counters(:,4)-100);
+        TC = argmax(counters(:,5)==53);
         duration = [duration ; [boubou([1:durationPreShift TC:TC+durationPostShift-1])']];
-        rwdrate = [rwdrate ; [compteurs([1:durationPreShift TC:TC+durationPostShift-1],2)']];
-        propsweep = [propsweep ; [compteurs([1:durationPreShift TC:TC+durationPostShift-1],6)']];
-        propside = [propside ; [compteurs([1:durationPreShift TC:TC+durationPostShift-1],6)']];
+        rwdrate = [rwdrate ; [counters([1:durationPreShift TC:TC+durationPostShift-1],2)']];
+        propsweep = [propsweep ; [counters([1:durationPreShift TC:TC+durationPostShift-1],6)']];
+        propside = [propside ; [counters([1:durationPreShift TC:TC+durationPostShift-1],6)']];
 
         nbcases = size(logs.replaySequence,1)/2; % + 1;
         propfwd3 = zeros(1,5); % fwd bwd img rnd TOTAL (3 states)
