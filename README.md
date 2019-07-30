@@ -4,7 +4,9 @@
 
 	The code is currently adapted to simulate the reinforcement learning models in a discretize world representing the multiple-T-maze experiment of A. David Redish and colleagues and implemented as a Markov Decision Process.
 
-	This code goes with the following submission: Cazé*, Khamassi*, Aubin, Girard, Hippocampal replays under the scrutiny of reinforcement learning models. (* equally contributing authors) submitted to Journal of Neurophysiology (special issue "Where Are You Going? The Neurobiology of Navigation »)
+	The first version of this code (tag CazeKhamassiEtAl2018) goes with the following publication: Cazé*, Khamassi*, Aubin, Girard (2018) Hippocampal replays under the scrutiny of reinforcement learning models. (* equally contributing authors) Journal of Neurophysiology, 120(6):2877-2896 (special issue "Where Are You Going? The Neurobiology of Navigation »).
+	
+	The second version of this code (tag KhamassiGirard2019) goes with the following submission: Khamassi, Girard (2019) Modeling awake hippocampal reactivations with model-based bidirectional planning. Submitted to Biological Cybernetics (special issue "Latest Advances in Understanding Complex Spatial Navigation").
 
 ## Questions?
 
