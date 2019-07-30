@@ -19,6 +19,9 @@ W = 4;
 
 % Number of states of the robot:
 nS = 54;
+% accessible states
+stata = [1 2 3 4 5 6 7 12 13 15 18 19 21 22 23 24 25 26 27 30 31 36 37 42 43 48 49 50 51 52 53 54]; % if double T-maze
+%stata = [1 2 3 4 5 6 7 12 13 18 19 21 22 23 24 25 26 27 30 31 36 37 42 43 48 49 50 51 52 53 54]; % if 8-maze
 
 % Number of actions available to the robot:
 nA = 4;
@@ -69,7 +72,7 @@ end
 P(:, W, :) = zeros(nS, nS);
 for iii = 1:nS
     switch (iii)
-        case {7,12,13,18,19,21,24,25,27,30,31,36,37,42,43,48,49,54}
+        case {7,12,13,18,19,21,24,25,27,30,31,36,37,42,43,48,49,54} % add 21 if multiple T-maze
             P(iii, W, iii-6) = 1;
         otherwise
             P(iii, W, iii) = 1;
@@ -91,7 +94,7 @@ totalDuration = 5000; % total duration of the experiment
 conditionDuration = 2000; % after which we change condition
 constraint = 1; % 1 only forward moves, 0 no wall bump, -1 no constraint
 departureState = 25; % departure state
-replayPosition = 1:54; % in all states or rwd locations only: [6 54]; % or departure state only: 25; % state(s) where replays are allowed
+replayPosition = stata; % 1:54; % in all states or rwd locations only: [6 54]; % or departure state only: 25; % state(s) where replays are allowed
 logSequenceLength = 2000; % max length of stored replay sequences
 
 % Distribution of the states where replay can occur.
@@ -99,4 +102,4 @@ P0 = zeros(1,nS);
 P0(replayPosition) = 1 / length(replayPosition);
 
 % We now create a structure that stores all the elements of the MDP
-M = struct('nS', nS, 'nA', nA, 'P', P, 'r', r, 'P0', P0, 'totalDuration', totalDuration, 'conditionDuration', conditionDuration, 'constraint', constraint, 'departureState', departureState, 'replayPosition', replayPosition, 'logSequenceLength', logSequenceLength, 'stochastic', stochastic);
+M = struct('nS', nS, 'nA', nA, 'P', P, 'r', r, 'P0', P0, 'totalDuration', totalDuration, 'conditionDuration', conditionDuration, 'constraint', constraint, 'departureState', departureState, 'replayPosition', replayPosition, 'logSequenceLength', logSequenceLength, 'stochastic', stochastic, 'stata', stata);

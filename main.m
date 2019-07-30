@@ -11,19 +11,20 @@
 % 
 %     created 21 Sept 2017
 %     by Mehdi Khamassi
-%     last modified 18 Jun 2018
+%     last modified 30 July 2019
 %     by Mehdi Khamassi
 %
 %     correspondence: firstname (dot) lastname (at) upmc (dot) fr 
 
-clear all
+%clear all
+clearvars -except replayMethod M R jjj kkk tabBeta tabPerfBeta
 close all
 clc
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % parameters of the replay experiment %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-replayMethod = 9;
+replayMethod = 19;
 % 0 MF-RL no replay
 % 1 basic VI (MB) loop on nS and nA (VI: Value Iteration)
 % 2 basic PI (MB) loop on nS and nA (PI: Policy Iteration)
@@ -42,6 +43,8 @@ replayMethod = 9;
 % 15 Dyna-RL trajectory
 % 16 Dyna-RL bidirectional
 % 17 Dyna-RL prioritized sweeping (Moore & Atkeson 1992; Peng & Williams 1993)
+% 18 MB-RL prioritized sweeping combined with policy iteration (PI)
+% 19 MB-RL prioritized sweeping combined with value iteration (VI)
 
 % define the Markov Decision Process (MDP) used in the multiple-T-maze task
 % of the group of Dave Redish:
@@ -51,8 +54,9 @@ M.conditionDuration = 2000; % timesteps after which we change condition
 M.logSequenceLength = 2000; % max length of stored replay sequences
 M.constraint = 1; % 1 only forward moves, 0 no wall bump, -1 no constraint
 M.departureState = 25; % departure state
-M.replayPosition = 1:54; % states where replays are allowed:
+M.replayPosition = M.stata; % states where replays are allowed:
 % = 1:54; % replays allowed in all states
+% = M.stata; % replays allowed in all accessible states (corridors)
 % = 25; % replays allowed only at departure state in central arm
 % = [6 54]; % replays allowed only at reward sites (6: left; 54: right)
 M.P0 = zeros(1,M.nS); % reset distribution of states where replay is allowed
@@ -68,9 +72,9 @@ end
 
 % define replay agent
 R = replayAgent(M);
-R.window = 54; % size of window containing a number of iterations in episodic memory
-R.replayiterthreshold = 0.01; % threshold above which a cumulated change in Q-values requires another cycle of replay
-R.replaybudget = 2; % max nb of replay cycles allowed (if -1, then infinite budget)
+R.window = 10; %54; % size of window containing a number of iterations in episodic memory
+R.replayiterthreshold = 0.001; % threshold above which a cumulated change in Q-values requires another cycle of replay
+R.replaybudget = -1; % max nb of replay cycles allowed (if -1, then infinite budget)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% PRETRAINING to learn the world model %%
@@ -262,7 +266,7 @@ if (replayMethod >= 3)
     %figure,plot(smooth(logs.memorySweeps(:,2)./(logs.memorySweeps(:,2)+logs.memorySweeps(:,3))),'LineWidth',2)
     plot(counters(:,6),'k')
     hold on
-    plot(smooth(counters(:,6),20),'LineWidth',2)
+    %plot(smooth(counters(:,6),20),'LineWidth',2)
     ylabel('prop L/R sweeps')
     xlabel('trials')
     axis([1 size(counters(:,5),1) 0 1])
@@ -271,7 +275,7 @@ if (replayMethod >= 3)
     % proportion of replays on left vs right side
     plot(counters(:,7),'k')
     hold on
-    plot(smooth(counters(:,7),20),'LineWidth',2)
+    %plot(smooth(counters(:,7),20),'LineWidth',2)
     ylabel('prop L/R side of replays')
     xlabel('trials')
     axis([1 size(counters(:,5),1) 0 1])
@@ -279,114 +283,260 @@ else
     xlabel('trials')
 end
 
-%% figures only for certain replay methods
-if (replayMethod >= 4)
-    %% figure showing the distance to goal for each replayed state within a sequence
-    figure
-    nbcases = 120; %size(logs.replaySequence,1)/2 + 1;
-    change_occurred = 0;
-    goal = 5;
-    average = ones(1,R.window);
-    for iii=1:nbcases
-        subplot(10,12,iii)
-        if ((~isempty(ruleChange))&&(change_occurred == 0)&&(logs.replaySequence(2*(iii-1)+1,1) > ruleChange(1,2)))
-            % rule change
-            imagesc(0)
-            goal = 53;
-            change_occurred = 1;
-        else
-            vector = logs.replaySequence(2*(iii-1)+2,1:logs.replaySequence(2*(iii-1)+1,3));
-            for jjj=1:length(vector)
-                vector(jjj) = distanceToGoal(goal, vector(jjj));
-            end
-            plot(vector,'k')
-            if (length(vector)<size(average,2))
-                [iii size(average) size(vector) length(vector)+1] % log
-                average(:,length(vector)+1:end) = [];
-            end
-            %[size(average) size(vector) length(vector)+1] % log
-            average = [average ; vector(1:size(average,2))];
-        end
-    end
-    average(1,:) = [];
-    
-    %% spatial plots of replays
-    figure
-    goal = 5; pointer = 14; %seq_length = 38;
-    seq_length = logs.replaySequence((pointer-1)*2+1,3);
-    vector = logs.replaySequence((pointer-1)*2+2,1:seq_length);
-    vectaz = vector;
-    for jjj=1:length(vector)
-        vectaz(jjj) = distanceToGoal(goal, vector(jjj));
-    end
-    %[vector ; vectaz] %logs
-    mask = zeros(6,9);mask(2,[2:4 6:8])=-1;mask(3,[2 6:8])=-1;mask(4,[2:3 5:8])=-1;mask(5,[2:3 5:8])=-1;
-    for jjj=2:seq_length/2 %floor(seq_length/3) %(seq_length-2) % 4:9
-        subplot(6,6,jjj-1) % subplot(6,6,24+jjj-1)
-        mask2 = mask;
-        
-        % 1 by 1
-        [x, y] = stateToCoordinate(M, vector(jjj));
-        mask2(y,x) = 1;
-%         % 2 by 2
-%         [x, y] = stateToCoordinate(M, vector(2*(jjj-1)+1));
+% %% figures only for certain replay methods
+% if (replayMethod >= 4)
+%     %% figure showing the distance to goal for each replayed state within a sequence
+%     figure
+%     nbcases = 14; %120; %size(logs.replaySequence,1)/2 + 1;
+%     change_occurred = 0;
+%     goal = 5;
+%     average = ones(1,R.window);
+%     for iii=1:nbcases
+%         subplot(10,12,iii)
+%         if ((~isempty(ruleChange))&&(change_occurred == 0)&&(logs.replaySequence(2*(iii-1)+1,1) > ruleChange(1,2)))
+%             % rule change
+%             imagesc(0)
+%             goal = 53;
+%             change_occurred = 1;
+%         else
+%             vector = logs.replaySequence(2*(iii-1)+2,1:logs.replaySequence(2*(iii-1)+1,3));
+%             for jjj=1:length(vector)
+%                 vector(jjj) = distanceToGoal(goal, vector(jjj));
+%             end
+%             plot(vector,'k')
+%             if (length(vector)<size(average,2))
+%                 [iii size(average) size(vector) length(vector)+1] % log
+%                 average(:,length(vector)+1:end) = [];
+%             end
+%             %[size(average) size(vector) length(vector)+1] % log
+%             average = [average ; vector(1:size(average,2))];
+%         end
+%     end
+%     average(1,:) = [];
+%     
+%     %% spatial plots of replays
+%     figure
+%     goal = 5; pointer = 14; %seq_length = 38;
+%     seq_length = logs.replaySequence((pointer-1)*2+1,3);
+%     vector = logs.replaySequence((pointer-1)*2+2,1:seq_length);
+%     vectaz = vector;
+%     for jjj=1:length(vector)
+%         vectaz(jjj) = distanceToGoal(goal, vector(jjj));
+%     end
+%     %[vector ; vectaz] %logs
+%     mask = zeros(6,9);mask(2,[2:4 6:8])=-1;mask(3,[2 6:8])=-1;mask(4,[2:3 5:8])=-1;mask(5,[2:3 5:8])=-1;
+%     for jjj=2:seq_length/2 %floor(seq_length/3) %(seq_length-2) % 4:9
+%         subplot(6,6,jjj-1) % subplot(6,6,24+jjj-1)
+%         mask2 = mask;
+%         
+%         % 1 by 1
+%         [x, y] = stateToCoordinate(M, vector(jjj));
 %         mask2(y,x) = 1;
-%         [x, y] = stateToCoordinate(M, vector(2*jjj));
-%         mask2(y,x) = 1;
-%         % 3 by 3
-%         [x, y] = stateToCoordinate(M, vector(3*(jjj-1)+1));
-%         mask2(y,x) = 1;
-%         [x, y] = stateToCoordinate(M, vector(3*(jjj-1)+2));
-%         mask2(y,x) = 1;
-%         [x, y] = stateToCoordinate(M, vector(3*jjj));
-%         mask2(y,x) = 1;
-        imagesc(mask2)
-        xticklabels('')
-        yticklabels('')
-        title(['t' num2str(jjj-1)])
-    end
-end
+% %         % 2 by 2
+% %         [x, y] = stateToCoordinate(M, vector(2*(jjj-1)+1));
+% %         mask2(y,x) = 1;
+% %         [x, y] = stateToCoordinate(M, vector(2*jjj));
+% %         mask2(y,x) = 1;
+% %         % 3 by 3
+% %         [x, y] = stateToCoordinate(M, vector(3*(jjj-1)+1));
+% %         mask2(y,x) = 1;
+% %         [x, y] = stateToCoordinate(M, vector(3*(jjj-1)+2));
+% %         mask2(y,x) = 1;
+% %         [x, y] = stateToCoordinate(M, vector(3*jjj));
+% %         mask2(y,x) = 1;
+%         imagesc(mask2)
+%         xticklabels('')
+%         yticklabels('')
+%         title(['t' num2str(jjj-1)])
+%     end
+% end
 
 %% figure showing locations of the maze where most replays occurred
+nbLines = 1; % one model per line
+cLine = 1; % current line
+normalizedPlot = true;
+family = 2; %'MF' % 2; %'MB' % 3; %'DYNA'
 replayLocation = zeros(6,9);
+replayLocation1 = zeros(6,9); % earlyLearning
+replayLocation2 = zeros(6,9); % lateLearning
+replayLocation3 = zeros(6,9); % postShift
+replayLocation4 = zeros(6,9); % finalPerf
+t1 = floor(M.conditionDuration/2);
+t2 = M.conditionDuration;
+t3 = M.conditionDuration + floor(M.conditionDuration/2);
+t4 = M.totalDuration - floor(M.conditionDuration/2);
 nonReplayLocation = ones(6,9);
-stata = [1 2 3 4 5 6 7 12 13 15 18 19 21 22 23 24 25 26 27 30 31 36 37 42 43 48 49 50 51 52 53 54]; % accessible states
 for iii=1:M.nS % loop over state number
     x = mod(iii,6);
     y = floor((iii-1)/6)+1;
     if (x == 0)
         x = 6;
     end
+    logs.sequence(8,:) = 1:length(logs.sequence);
     replayLocation(x,y) = replayLocation(x,y) + sum(logs.sequence(4,logs.sequence(1,:)==iii));
+    replayLocation1(x,y) = replayLocation1(x,y) + sum(logs.sequence(4,(logs.sequence(1,:)==iii)&(logs.sequence(8,:)<=t1)));
+    replayLocation2(x,y) = replayLocation2(x,y) + sum(logs.sequence(4,(logs.sequence(1,:)==iii)&(logs.sequence(8,:)>t1)&(logs.sequence(8,:)<=t2)));
+    replayLocation3(x,y) = replayLocation3(x,y) + sum(logs.sequence(4,(logs.sequence(1,:)==iii)&(logs.sequence(8,:)>t2)&(logs.sequence(8,:)<=t3)));
+    replayLocation4(x,y) = replayLocation4(x,y) + sum(logs.sequence(4,(logs.sequence(1,:)==iii)&(logs.sequence(8,:)>t3)&(logs.sequence(8,:)<=t4)));
     % we tag states that are outside the corridors
-    if (sum(stata==iii) == 0)
+    if (sum(M.stata==iii) == 0)
         nonReplayLocation(x,y) = -1;
     end
 end
-replayLocation = replayLocation / sum(sum(replayLocation));
+if (normalizedPlot)
+    theMax = max(max(max(sum(sum(replayLocation1)),sum(sum(replayLocation2))),sum(sum(replayLocation3))),sum(sum(replayLocation4)));
+    replayLocation = replayLocation / sum(sum(replayLocation));
+    replayLocation1 = replayLocation1 / theMax;
+    replayLocation2 = replayLocation2 / theMax;
+    replayLocation3 = replayLocation3 / theMax;
+    replayLocation4 = replayLocation4 / theMax;
+    theMax = max(max(max(max(max(replayLocation1)),max(max(replayLocation2))),max(max(replayLocation3))),max(max(replayLocation4)));
+end
 
-figure
+% REPLAY LOCATION PER TASK PHASE
+if (cLine == 1)
+    figure
+end
+% early learning
+subplot(nbLines,4,(cLine-1) * 4 + 1)
+h = imagesc(replayLocation1);
+switch (cLine)
+    case 1
+        title('early learning')
+        switch(family)
+            case 1 % MF
+                ylabel('MF-unord')
+            case 2 % MB
+                ylabel('MB-unord')
+            case 3 % DYNA
+                ylabel('DYNA-unord')
+        end
+    case 2
+        switch(family)
+            case 1 % MF
+                ylabel('MF-prior')
+            case 2 % MB
+                ylabel('MB-prior')
+            case 3 % DYNA
+                ylabel('DYNA-prior')
+        end
+    case 3
+        switch(family)
+            case 1 % MF
+                ylabel('MF-forw')
+            case 2 % MB
+                ylabel('MB-traj')
+            case 3 % DYNA
+                ylabel('DYNA-traj')
+        end
+    case 4
+        switch(family)
+            case 1 % MF
+                ylabel('MF-back')
+            case 2 % MB
+                ylabel('MB-bidir')
+            case 3 % DYNA
+                ylabel('DYNA-bidir')
+        end
+end
+c = colorbar;
+if (normalizedPlot)
+    caxis([0 theMax])
+end
+% plotting the borders of the maze
+plotMazeBorders
+% late learning
+subplot(nbLines,4,(cLine-1) * 4 + 2)
+h = imagesc(replayLocation2);
+if (cLine == 1)
+    title('late learning')
+end
+c = colorbar;
+if (normalizedPlot)
+    caxis([0 theMax])
+end
+% plotting the borders of the maze
+plotMazeBorders
+% post shift
+subplot(nbLines,4,(cLine-1) * 4 + 3)
+h = imagesc(replayLocation3);
+if (cLine == 1)
+    title('post rule change')
+end
+c = colorbar;
+if (normalizedPlot)
+    caxis([0 theMax])
+end
+% plotting the borders of the maze
+plotMazeBorders
+% final performance
+subplot(nbLines,4,(cLine-1) * 4 + 4)
+h = imagesc(replayLocation4);
+if (cLine == 1)
+    title('late experiment')
+end
+c = colorbar;
+if (normalizedPlot)
+    caxis([0 theMax])
+end
+% plotting the borders of the maze
+plotMazeBorders
+FigHandle = gcf;
+if (nbLines == 1)
+    set(FigHandle, 'Position', [250, 350, 700, 100]);
+else
+    set(FigHandle, 'Position', [250, 450, 700, 400]);
+end
+%print('-bestfit','MBtrajectoryReplayCaze2018_reversal_replayLocation','-dpdf')
+
+% GLOBAL REPLAY LOCATION
+if (cLine == 1)
+    figure
+end
+subplot(1,4,cLine)
 h = imagesc(replayLocation);
 c = colorbar;
-c.Label.String = 'normalized total replay duration in each state (a.u.)';
+switch (cLine)
+    case 1
+        ylabel('global')
+        switch(family)
+            case 1 % MF
+                title('MF-unord')
+            case 2 % MB
+                title('MB-unord')
+            case 3 % DYNA
+                title('DYNA-unord')
+        end
+    case 2
+        switch(family)
+            case 1 % MF
+                title('MF-prior')
+            case 2 % MB
+                title('MB-prior')
+            case 3 % DYNA
+                title('DYNA-prior')
+        end
+    case 3
+        switch(family)
+            case 1 % MF
+                title('MF-forw')
+            case 2 % MB
+                title('MB-traj')
+            case 3 % DYNA
+                title('DYNA-traj')
+        end
+    case 4
+        switch(family)
+            case 1 % MF
+                title('MF-back')
+            case 2 % MB
+                title('MB-bidir')
+            case 3 % DYNA
+                title('DYNA-bidir')
+        end
+end
+%c.Label.String = 'normalized total replay duration in each state (a.u.)';
 % plotting the borders of the maze
-set(h, 'AlphaData', nonReplayLocation)
-hold on
-plot([1.5 1.5],[1.5 5.5],'k','LineWidth',2)
-plot([1.5 3.5],[5.5 5.5],'k','LineWidth',2)
-plot([3.5 3.5],[3.5 5.5],'k','LineWidth',2)
-plot([2.5 3.5],[3.5 3.5],'k','LineWidth',2)
-plot([2.5 2.5],[2.5 3.5],'k','LineWidth',2)
-plot([2.5 4.5],[2.5 2.5],'k','LineWidth',2)
-plot([4.5 4.5],[1.5 2.5],'k','LineWidth',2)
-plot([1.5 4.5],[1.5 1.5],'k','LineWidth',2)
-
-plot([5.5 5.5],[1.5 3.5],'k','LineWidth',2)
-plot([4.5 5.5],[3.5 3.5],'k','LineWidth',2)
-plot([4.5 4.5],[3.5 5.5],'k','LineWidth',2)
-plot([4.5 8.5],[5.5 5.5],'k','LineWidth',2)
-plot([8.5 8.5],[1.5 5.5],'k','LineWidth',2)
-plot([5.5 8.5],[1.5 1.5],'k','LineWidth',2)
-
-xticks([])
-yticks([])
+plotMazeBorders
+FigHandle = gcf;
+set(FigHandle, 'Position', [250, 350, 700, 100]);

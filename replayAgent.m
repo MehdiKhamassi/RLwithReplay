@@ -9,7 +9,7 @@ function R = replayAgent(M)
 % 
 %     created 21 Sept 2017
 %     by Mehdi Khamassi
-%     last modified 18 Jun 2018
+%     last modified 28 May 2019
 %     by Mehdi Khamassi
 %
 %     correspondence: firstname (dot) lastname (at) upmc (dot) fr 
@@ -21,11 +21,12 @@ function R = replayAgent(M)
     nA = M.nA;
     
     %% Initialize model-free Q-learning (to decide which action to make)
-    Q = ones(nS, nA) * 3; % Q-values
+    Q = zeros(nS, nA); % Q-values
     RPEQ = zeros(1, nA); % delta for Q-learning
     alpha = 0.2; % Q-learning learning rate
     gamma = 0.99; % discount factor (time horizon for reward prediction)
-    beta = 3; % exploration rate (inverse temperature)
+    beta = 3; %10 for PI versus 3 for VI; % exploration rate (inverse temperature)
+    betaReplay = 10; % for exploration during trajectory sampling
     decisionRule = 'softmax'; % decision-rule
 
     %% Initialize model-based transition and reward functions
@@ -34,14 +35,14 @@ function R = replayAgent(M)
     N    = zeros(M.nS, M.nA);
     
     %% Initialize episodic memory
-    window = 54; % size of window containing a number of iterations in episodic memory
-    replayiterthreshold = 0.01; % threshold above which a cumulated change in Q requires another iteration of replay
+    window = 10; %54; % size of window containing a number of iterations in episodic memory
+    replayiterthreshold = 0.001; % threshold above which a cumulated change in Q requires another iteration of replay
     replaybudget = 10; % max nb of replay iterations allowed
     
     % Initialize the policy with random actions for all states
     pol = randi(M.nA,M.nS,1);
     
     % build a structure for the replay agent
-    R = struct('nS', nS, 'nA', nA, 'alpha', alpha, 'beta', beta, 'gamma', gamma, 'decisionRule', decisionRule, 'Q', Q, 'RPEQ', RPEQ, 'pol', pol, 'hatP', hatP, 'hatR', hatR, 'N', N, 'window', window, 'replayiterthreshold', replayiterthreshold, 'replaybudget', replaybudget');
+    R = struct('nS', nS, 'nA', nA, 'alpha', alpha, 'beta', beta, 'betaReplay', betaReplay, 'gamma', gamma, 'decisionRule', decisionRule, 'Q', Q, 'RPEQ', RPEQ, 'pol', pol, 'hatP', hatP, 'hatR', hatR, 'N', N, 'window', window, 'replayiterthreshold', replayiterthreshold, 'replaybudget', replaybudget');
 
 end

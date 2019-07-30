@@ -17,7 +17,7 @@ function [R, logs] = simulateRLwithReplay(M, R, replayMethod)
 % 
 %     created 21 Sept 2017
 %     by Mehdi Khamassi
-%     last modified 18 Jun 2018
+%     last modified 24 May 2019
 %     by Mehdi Khamassi
 %
 %     correspondence: firstname (dot) lastname (at) upmc (dot) fr 
@@ -51,7 +51,7 @@ while (letsContinue)
         % every M.conditionDuration steps)
         if (M.r(5,S) == 1) % reward currently in state 5
             M.r(5,S) = 0;
-            M.r(53,S) = 1;
+            %M.r(53,S) = 1; % comment if extinction experiment!
         else % reward currently in state 53
             %M.r(53,S) = 0;
             %M.r(5,S) = 1;
@@ -106,12 +106,35 @@ while (letsContinue)
         R.hatR(x, u) = r;
     end
     % good old simple RTDP method (Sutton 1990) to update Q
-    Qmax = max(R.Q, [], 2);
-    newQ = R.hatR(x, u) + R.gamma * sum(reshape(R.hatP(x, u, :), M.nS, 1) .* Qmax);
+    switch (replayMethod)
+        case {2,18} % PI methods
+            pol = R.pol;
+            % Evaluting the current policy
+            carreP = zeros(R.nS, R.nS);
+            vectR = zeros(R.nS, 1);
+            for xxx=1:R.nS
+                vectR(xxx) = R.hatR(xxx, pol(xxx));
+                for yyy=1:R.nS
+                    carreP(xxx, yyy) = R.hatP(xxx, pol(xxx), yyy);
+                end;
+            end;
+            %V = inv(eye(R.nS, R.nS) - R.gamma * carreP) * vectR;
+            V = (eye(R.nS, R.nS) - R.gamma * carreP) \ vectR;
+%             % Performing PI update
+%             for xxx=1:R.nS
+%                 for uuu=1:R.nA
+%                     Q(xxx, uuu) = R.hatR(xxx, uuu) + R.gamma * sum(reshape(R.hatP(xxx, uuu, :), R.nS, 1)' * V);
+%                 end
+%             end
+            newQ = R.hatR(x, u) + R.gamma * sum(reshape(R.hatP(x, u, :), R.nS, 1)' * V);
+        otherwise % VI, MF or Dyna methods
+            Qmax = max(R.Q, [], 2);
+            newQ = R.hatR(x, u) + R.gamma * sum(reshape(R.hatP(x, u, :), R.nS, 1) .* Qmax);
+    end
     RPE_MB = newQ - R.Q(x, u);
     Q_MB = newQ;
     switch (replayMethod)
-        case {1,2,6,8,10,11,12,13} % MB-RL methods
+        case {1,2,6,8,10,11,12,13,18,19} % MB-RL methods
             R.Q(x, u) = Q_MB;
             RPE = RPE_MB;
         case {3,4,5,7,9} % MF-RL methods
@@ -124,7 +147,7 @@ while (letsContinue)
     % Update Q in a model-free manner
     [ RPE_MF, Q_MF ] = temporalDifferenceError( r, 0, 1, u, R.Q(x,:), R.Q(y,:), 1, R.alpha, R.gamma, 1, 0, 0, 0 );
     switch (replayMethod)
-        case {1,2,6,8,10,11,12,13} % MB-RL methods
+        case {1,2,6,8,10,11,12,13,18,19} % MB-RL methods
         case {3,4,5,7,9} % MF-RL methods
             R.Q(x,:) = Q_MF;
             RPE = RPE_MF(u);
@@ -156,24 +179,40 @@ while (letsContinue)
         end
     end
     % we search for predecessors of x
-    if (((replayMethod == 6)||(replayMethod == 11)||(replayMethod == 12)||(replayMethod == 17))&&(abs(RPE) > R.replayiterthreshold)) % only for MB-prior methods
+    if (((replayMethod == 6)||(replayMethod == 11)||(replayMethod == 12)||(replayMethod == 17)||(replayMethod == 18)||(replayMethod == 19))&&(abs(RPE) > R.replayiterthreshold)) % only for MB-prior methods
         for aaa = 1:M.nA
             pred = R.hatP(:,aaa,x)>(1/M.nS);
             indexes = (1:M.nS);
             pred = indexes(pred);
             while (~isempty(pred))
+                % compute RPE for each pred
+                switch (replayMethod)
+                    case {2,18} % PI methods
+                        Qpred = R.hatR(pred(1),aaa) + R.gamma * sum(reshape(R.hatP(x, aaa, :), R.nS, 1)' * V);
+                        RPEpred = Qpred - R.Q(pred(1),aaa);
+                    case {6,11,12,19} % VI methods
+                        Qmax = max(R.Q, [], 2);
+                        Qpred = R.hatR(x, u) + R.gamma * sum(reshape(R.hatP(x, u, :), R.nS, 1) .* Qmax);
+                        RPEpred = Qpred - R.Q(pred(1),aaa);
+                    otherwise % MF or Dyna methods
+                        Qmax = max(R.Q, [], 2);
+                        RPEpred = R.hatR(pred(1),aaa) + R.gamma * Qmax(pred(1)) - R.Q(x, aaa);
+                end
+                % add (pred,RPEpred) to bufferRPE
                 if (sum(bufferRPE(1,:)==pred(1))==0) % predecessor not already in bufferRPE
-                    if (replayMethod == 12)
-                        bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPE ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPE) ; x ; 0]];
-                    else
-                        bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPE ; R.hatP(pred(1),aaa,x) * abs(RPE) ; x ; 0]];
+                    if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > R.replayiterthreshold) % high priority
+                        if (replayMethod == 12)
+                            bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPEpred ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
+                        else
+                            bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
+                        end
                     end
                 else
-                    if ((R.hatP(pred(1),aaa,x) * abs(RPE)) > bufferRPE(5,bufferRPE(1,:)==pred(1))) % highest priority
+                    if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > bufferRPE(5,bufferRPE(1,:)==pred(1))) % highest priority
                         if (replayMethod == 12)
-                            bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPE ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPE) ; x ; 0];
+                            bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPEpred ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
                         else
-                            bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPE ; R.hatP(pred(1),aaa,x) * abs(RPE) ; x ; 0];
+                            bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
                         end
                     end
                 end
@@ -189,14 +228,14 @@ while (letsContinue)
     if (M.P0(y) > 0)
         switch (replayMethod)
             case 1 %% VI as replay method
-                [Q, pol, nbReplayCycle] = VI(R, [], replayMethod);
+                [Q, pol, nbReplayCycle] = VI(M, R, [], [], replayMethod);
                 % we store the result of the replay
                 R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                 logs.sequence(4,iter) = nbReplayCycle * R.nS * R.nA; % we store replay duration
                 logs.sequence(7,iter) = nbReplayCycle; % we store replay cycles
                 
             case 2 %% PI as replay method
-                [Q, pol, nbReplayCycle] = PI(R, []);
+                [Q, pol, nbReplayCycle] = PI(M, R, [], [], replayMethod);
                 % we store the result of the replay
                 R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                 logs.sequence(4,iter) = nbReplayCycle * R.nS * R.nA; % we store replay duration
@@ -275,7 +314,8 @@ while (letsContinue)
                     [~, index] = sort(replaybuffer(5,:),'descend');
                     replaybuffer = replaybuffer(:,index);
                     start = 1;
-                    [Q, pol, nbReplayCycle, ~, buffersweeps, bufferside, replaybuffer, bufferRPE] = VI(R, replaybuffer(:,start:end), replayMethod);
+                    trajectbuffer = logs.sequence(:,iter);
+                    [Q, pol, nbReplayCycle, ~, buffersweeps, bufferside, replaybuffer, bufferRPE] = VI(M, R, replaybuffer(:,start:end), trajectbuffer(:,start:end), replayMethod);
                     if (replayMethod == 6)
                         bufferRPE = []; % we reset the buffer of RPEs
                     end
@@ -291,11 +331,12 @@ while (letsContinue)
                     logs.sequence(4,iter) = 0; % we store replay duration
                     logs.sequence(7,iter) = 0; % we store replay cycles
                 end
+                %logs.sequence(:,iter)'
                 
             case {8,14} %% MB-RL/Dyna-RL shuffled: VI with shuffled state
                 replaybuffer = logs.sequence(:,iter);
                 start = 1;
-                [Q, pol, nbReplayCycle, ~, buffersweeps, bufferside, replaybuffer] = VI(R, replaybuffer(:,start:end), replayMethod);
+                [Q, pol, nbReplayCycle, ~, buffersweeps, bufferside, replaybuffer] = VI(M, R, replaybuffer(:,start:end), replaybuffer(:,start:end), replayMethod);
                 % we store the result of the replay
                 R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                 logs.sequence(4,iter) = size(replaybuffer(1,:),2)-1; % we store replay duration
@@ -308,7 +349,7 @@ while (letsContinue)
             case {10,15} % MB/DYNA trajectory sampling
                 replaybuffer = logs.sequence(:,iter);
                 start = 1;
-                [Q, pol, nbReplayCycle, ~, buffersweeps, bufferside, replaybuffer] = VI(R, replaybuffer(:,start:end), replayMethod);
+                [Q, pol, nbReplayCycle, ~, buffersweeps, bufferside, replaybuffer] = VI(M, R, [], replaybuffer(:,start:end), replayMethod);
                 % we store the result of the replay
                 R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                 logs.sequence(4,iter) = size(replaybuffer(1,:),2)-1; % we store replay duration
@@ -317,6 +358,7 @@ while (letsContinue)
                 logs.memorySide = [logs.memorySide ; [iter sum(bufferside==18) sum(bufferside==30) length(bufferside)]];
                 durationReplaySequence = size(replaybuffer(1,:),2)-1;
                 logs.replaySequence = [logs.replaySequence ; [iter nbReplayCycle durationReplaySequence ones(1,M.logSequenceLength-3)] ; [replaybuffer(1,2:min(M.logSequenceLength+1,durationReplaySequence)) ones(1,max(0,M.logSequenceLength+1-durationReplaySequence))*-1]]; % we store the full sequence of replay
+                %logs.sequence(:,iter)'
                 
             case {13,16} % MB/DYNA bidirectional planning
                 iii = argmax(logs.sequence(3,:)); % locate reward (i.e. goal)
@@ -326,7 +368,7 @@ while (letsContinue)
                 replaybuffer = logs.sequence(:,iii);
                 replaybuffer(6,1) = logs.sequence(1,iter); % store current position
                 start = 1;
-                [Q, pol, nbReplayCycle, ~, buffersweeps, bufferside, replaybuffer] = VI(R, replaybuffer(:,start:end), replayMethod);
+                [Q, pol, nbReplayCycle, ~, buffersweeps, bufferside, replaybuffer] = VI(M, R, [], replaybuffer(:,start:end), replayMethod);
                 % we store the result of the replay
                 R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
                 logs.sequence(4,iter) = size(replaybuffer(1,:),2)-1; % we store replay duration
@@ -335,6 +377,54 @@ while (letsContinue)
                 logs.memorySide = [logs.memorySide ; [iter sum(bufferside==18) sum(bufferside==30) length(bufferside)]];
                 durationReplaySequence = size(replaybuffer(1,:),2)-1;
                 logs.replaySequence = [logs.replaySequence ; [iter nbReplayCycle durationReplaySequence ones(1,M.logSequenceLength-3)] ; [replaybuffer(1,2:min(M.logSequenceLength+1,durationReplaySequence)) ones(1,max(0,M.logSequenceLength+1-durationReplaySequence))*-1]]; % we store the full sequence of replay
+                
+            %% MB inference as replay method combined with policy iteration
+            case 18 % MB prioritized sweeping with policy iteration
+                if (~isempty(bufferRPE))
+                    replaybuffer = bufferRPE(:,max(1,end-R.window+1):end);
+                    [~, index] = sort(replaybuffer(5,:),'descend');
+                    replaybuffer = replaybuffer(:,index);
+                    start = 1;
+                    trajectbuffer = logs.sequence(:,iter);
+                    [Q, pol, nbReplayCycle, ~, buffersweeps, bufferside, replaybuffer, bufferRPE] = PI(M, R, replaybuffer(:,start:end), trajectbuffer(:,start:end), replayMethod);
+                    % we store the result of the replay
+                    R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
+                    logs.sequence(4,iter) = size(replaybuffer(1,:),2); % we store replay duration
+                    logs.sequence(7,iter) = nbReplayCycle; % we store replay cycles
+                    logs.memorySweeps = [logs.memorySweeps ; [iter sum(buffersweeps==18) sum(buffersweeps==30) length(buffersweeps)]];
+                    logs.memorySide = [logs.memorySide ; [iter sum(bufferside==18) sum(bufferside==30) length(bufferside)]];
+                    durationReplaySequence = size(replaybuffer(1,:),2);
+                    logs.replaySequence = [logs.replaySequence ; [iter nbReplayCycle durationReplaySequence 1 ones(1,M.logSequenceLength-4)] ; [replaybuffer(1,1:min(M.logSequenceLength,durationReplaySequence)) ones(1,M.logSequenceLength-durationReplaySequence)*-1]]; % we store the full sequence of replay
+                else
+                    logs.sequence(4,iter) = 0; % we store replay duration
+                    logs.sequence(7,iter) = 0; % we store replay cycles
+                end
+                
+            %% MB inference as replay method
+            case 19 % MB prioritized sweeping + traj sampling until surprising states
+                if (~isempty(bufferRPE))
+                    replaybuffer = bufferRPE(:,max(1,end-R.window+1):end);
+                    [~, index] = sort(replaybuffer(5,:),'descend');
+                    replaybuffer = replaybuffer(:,index);
+                else
+                    replaybuffer = [];
+                end
+                    start = 1;
+                    trajectbuffer = logs.sequence(:,iter);
+                    [Q, pol, nbReplayCycle, ~, buffersweeps, bufferside, replaybuffer, bufferRPE] = VI(M, R, replaybuffer, trajectbuffer(:,start:end), replayMethod);
+                    % we store the result of the replay
+                    R.Q = Q; R.pol = pol; % we store in R the result of VI/PI
+                    logs.sequence(4,iter) = size(replaybuffer(1,:),2); % we store replay duration
+                    logs.sequence(7,iter) = nbReplayCycle; % we store replay cycles
+                    logs.memorySweeps = [logs.memorySweeps ; [iter sum(buffersweeps==18) sum(buffersweeps==30) length(buffersweeps)]];
+                    logs.memorySide = [logs.memorySide ; [iter sum(bufferside==18) sum(bufferside==30) length(bufferside)]];
+                    durationReplaySequence = size(replaybuffer(1,:),2);
+                    logs.replaySequence = [logs.replaySequence ; [iter nbReplayCycle durationReplaySequence 1 ones(1,M.logSequenceLength-4)] ; [replaybuffer(1,1:min(M.logSequenceLength,durationReplaySequence)) ones(1,M.logSequenceLength-durationReplaySequence)*-1]]; % we store the full sequence of replay
+                    %logs.sequence(:,iter)'
+%                 else
+%                     logs.sequence(4,iter) = 0; % we store replay duration
+%                     logs.sequence(7,iter) = 0; % we store replay cycles
+%                 end
                 
             otherwise % no replay
                 logs.sequence(4,iter) = 0; % we store replay duration
@@ -359,5 +449,5 @@ end
 pol = zeros(R.nS, 1);
 for x=1:R.nS
     pol(x) = argmax(R.Q(x, :));
-end;
+end
 

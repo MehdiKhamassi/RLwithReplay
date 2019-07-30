@@ -47,7 +47,8 @@ function x = possibleMoves(state, constraint)
             case 19
                 x = 4;
             case 21
-                x = [3 4];
+                x = [3 4]; % if double T-maze
+                %x = 3; % if 8-maze
             case 22
                 x = 1;
             case 23
