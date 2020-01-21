@@ -6,7 +6,7 @@
 
 	The first version of this code (tag CazeKhamassiEtAl2018) goes with the following publication: Cazé*, Khamassi*, Aubin, Girard (2018) Hippocampal replays under the scrutiny of reinforcement learning models. (* equally contributing authors) Journal of Neurophysiology, 120(6):2877-2896 (special issue "Where Are You Going? The Neurobiology of Navigation »).
 	
-	The second version of this code (tag KhamassiGirard2019) goes with the following submission: Khamassi, Girard (2019) Modeling awake hippocampal reactivations with model-based bidirectional planning. Submitted to Biological Cybernetics (special issue "Latest Advances in Understanding Complex Spatial Navigation").
+	The second version of this code (tag KhamassiGirard2020) goes with the following submission: Khamassi, Girard (2020) Modeling awake hippocampal reactivations with model-based bidirectional search. Biological Cybernetics (special issue "Latest Advances in Understanding Complex Spatial Navigation"). To appear.
 
 ## Questions?
 
