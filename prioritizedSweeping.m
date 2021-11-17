@@ -51,15 +51,15 @@ function [Q, sequence, bufferRPE] = prioritizedSweeping(R, sequence, bufferRPE, 
                     % compute RPE for each pred
                     switch (replayMethod)
                         case {2,18} % PI methods
-                            Qpred = R.hatR(pred(1),aaa) + R.gamma * sum(reshape(R.hatP(x, aaa, :), R.nS, 1)' * V);
+                            Qpred = R.hatR(pred(1), aaa) + R.gamma * sum(reshape(R.hatP(pred(1), aaa, :), R.nS, 1)' * V);
                             RPEpred = Qpred - Q(pred(1),aaa);
                         case {6,11,12,19} % VI methods
                             Qmax = max(Q, [], 2);
-                            Qpred = R.hatR(x, u) + R.gamma * sum(reshape(R.hatP(x, u, :), R.nS, 1) .* Qmax);
+                            Qpred = R.hatR(pred(1), aaa) + R.gamma * sum(reshape(R.hatP(pred(1), aaa, :), R.nS, 1) .* Qmax);
                             RPEpred = Qpred - Q(pred(1),aaa);
                         otherwise % MF or Dyna methods
                             Qmax = max(Q, [], 2);
-                            RPEpred = R.hatR(pred(1),aaa) + R.gamma * Qmax(pred(1)) - Q(x, aaa);
+                            RPEpred = R.hatR(pred(1), aaa) + R.gamma * Qmax(x) - Q(pred(1), aaa);
                     end
                     % add (pred,RPEpred) to bufferRPE
                     if (sum(bufferRPE(1,:)==pred(1))==0) % predecessor not already in bufferRPE
