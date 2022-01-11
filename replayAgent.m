@@ -9,7 +9,7 @@ function R = replayAgent(M)
 % 
 %     created 21 Sept 2017
 %     by Mehdi Khamassi
-%     last modified 28 May 2019
+%     last modified 3 December 2021
 %     by Mehdi Khamassi
 %
 %     correspondence: firstname (dot) lastname (at) upmc (dot) fr 
@@ -30,9 +30,9 @@ function R = replayAgent(M)
     decisionRule = 'softmax'; % decision-rule
 
     %% Initialize model-based transition and reward functions
-    hatP = ones(M.nS, M.nA, M.nS) / M.nS;
-    hatR = zeros(M.nS, M.nA);
-    N    = zeros(M.nS, M.nA);
+    hatP = ones(nS, nA, nS) / nS;
+    hatR = zeros(nS, nA);
+    N    = zeros(nS, nA);
     
     %% Initialize episodic memory
     window = 10; %54; % size of window containing a number of iterations in episodic memory
@@ -40,7 +40,7 @@ function R = replayAgent(M)
     replaybudget = 10; % max nb of replay iterations allowed
     
     % Initialize the policy with random actions for all states
-    pol = randi(M.nA,M.nS,1);
+    pol = randi(nA, nS, 1);
     
     % build a structure for the replay agent
     R = struct('nS', nS, 'nA', nA, 'alpha', alpha, 'beta', beta, 'betaReplay', betaReplay, 'gamma', gamma, 'decisionRule', decisionRule, 'Q', Q, 'RPEQ', RPEQ, 'pol', pol, 'hatP', hatP, 'hatR', hatR, 'N', N, 'window', window, 'replayiterthreshold', replayiterthreshold, 'replaybudget', replaybudget');
