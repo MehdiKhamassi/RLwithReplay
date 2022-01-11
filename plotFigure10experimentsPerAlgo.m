@@ -14,14 +14,14 @@
 %
 %     correspondence: firstname (dot) lastname (at) upmc (dot) fr 
 
-modelName = 'model19_MBpriorVI_newPriorSamplRPEpred_TrajSamplUntilVisiting1stateOfBufferRPE_window10replayThreshold001_strategy2_beta3'; % 'model11_MBprior_RPEpred_beta3'; % 'model10_MBtraj_beta3'; % 
-preFixDirectoryName = '~/Documents/_owncloud/travaux/ISIR/replay/newExpeMay2019/ReversalExperiment2019_'; % '~/Documents/_owncloud/travaux/ISIR/replay/Caze2017_allExperiments/Caze2017_Experiments_'; % 'newExpeDec2018/ReversalExperiment2018_'; % 
-preFixFileName = 'ReversalExperiment2019_'; % 'Caze2017_'; % 'ReversalExperiment2018_'; % 
-curveColor = 'k'; % one color per model, if one wants to superimpose the curves of different models for comparison
+modelName = 'model20_window54_epsilon10-3_budgetInf'; %'model19_MBpriorVI_newPriorSamplRPEpred_TrajSamplUntilVisiting1stateOfBufferRPE_window10replayThreshold001_strategy2_beta3'; % 'model19_window25'; %'model11_MBprior_RPEpred_beta3'; % 'model10_MBtraj_beta3'; % 
+preFixDirectoryName = 'Massi2022_'; %'~/Documents/_owncloud/travaux/ISIR/replay/newExpeMay2019/ReversalExperiment2019_'; % '~/Documents/_owncloud/travaux/ISIR/replay/Caze2017_allExperiments/Caze2017_Experiments_'; % 'newExpeDec2018/ReversalExperiment2018_'; % 
+preFixFileName = 'Massi2022_'; % 'Caze2017_'; % 'ReversalExperiment2018_'; % 
+curveColor = 'k'; %[224/255 224/255 224/255]; % %one color per model, if one wants to superimpose the curves of different models for comparison
 barPos = 11:14; % one position per model: either 1:4 or 6:9 or 11:14 or 16:19
 nbExpe = 10; % number of simulation experiments
-durationPreShift = 50; % (number of trials before task rule change)
-durationPostShift = 50; % (number of trials after task rule change)
+durationPreShift = 100; % (number of trials before task rule change)
+durationPostShift = 100; % (number of trials after task rule change)
 dataAlreadySaved = false; % if true, data previously saved with this function will be loaded, otherwise they will be generated and then saved in a file
 
 if (~dataAlreadySaved)
@@ -393,16 +393,26 @@ figure
 % plot learning curves
 subplot(2,1,1)
 plot([10000 10100],[50 50],'Color',[57/255 83/255 164/255],'LineWidth',3) % blue
+%plot([10000 10100],[50 50],'k','LineWidth',3) % black
 hold on
+%plot([10000 10100],[50 50],'Color',[102/255 102/255 102/255],'LineWidth',3) % blue
 %plot([10000 10100],[50 50],'Color',[235/255 32/255 38/255],'LineWidth',3) % red
+plot([10000 10100],[50 50],'Color',[253/255 122/255 10/255],'LineWidth',3) % orange
 plot([10000 10100],[50 50],'Color',[106/255 188/255 69/255],'LineWidth',3) % green
+%plot([10000 10100],[50 50],'Color',[134/255 197/255 252/255],'LineWidth',3) % cyan
 plot([10000 10100],[50 50],'k','LineWidth',3)
+%plot([10000 10100],[50 50],'Color',[51/255 51/255 51/255],'LineWidth',3) % blue
+% plot([10000 10100],[50 50],'Color',[153/255 153/255 153/255],'LineWidth',3) % blue
+% plot([10000 10100],[50 50],'Color',[170/255 170/255 170/255],'LineWidth',3) % blue
+% plot([10000 10100],[50 50],'Color',[204/255 204/255 204/255],'LineWidth',3) % blue
+% plot([10000 10100],[50 50],'Color',[224/255 224/255 224/255],'LineWidth',3) % blue
 plot([durationPreShift durationPreShift],[0 15],'--','Color', [0.5 0.5 0.5])
 errorfill(1:durationPreShift+durationPostShift,mean(log(duration)),std(log(duration)),curveColor)
+%plot(1:durationPreShift+durationPostShift,mean(log(duration)),'Color',curveColor,'LineWidth',3)
 axis([0 durationPreShift+durationPostShift 0 15]) % for reversal experiments
 %axis([0 durationPreShift+durationPostShift 2 8]) % for extinction experiments
-ylabel('ln(# model iterations)')
-% BELOW, CHOOSE THE APPROPRIATE TITLE DEPENDING ON WHAT4S BEING PLOTTED IN
+ylabel('ln(# model iterations)','FontSize',16)
+% BELOW, CHOOSE THE APPROPRIATE TITLE DEPENDING ON WHAT'S BEING PLOTTED IN
 % THE FIGURE, AND COMMENT THE UNAPPROPRIATE TITLES:
 %title('MF-RL. green: abs(RPE)-prioritized replays')
 %title('MF-RL. black: no replay; blue: unordered replays; red: backward replays')
@@ -413,8 +423,15 @@ ylabel('ln(# model iterations)')
 %legend('MF-RL unordered','MF-RL backward','MF-RL forward','MF-RL prior')
 %legend('MB-RL shuffled','DYNA shuffled')
 %legend('MB-RL PTSPI','MB-RL PTSVI') % Prioritized Trajectory Sampling with PI or VI
-legend('MB-RL trajectory sampling','MB-RL prioritized sweeping','MB-RL bidirectional planning') % Prioritized Trajectory Sampling with PI or VI
 %legend('MB-RL bidirectional planning') % Prioritized Trajectory Sampling with PI or VI
+%legend('MB-RL trajectory sampling','MB-RL prioritized sweeping','MB-RL bidirectional planning') % Prioritized Trajectory Sampling with PI or VI
+%legend('MF-RL no replay','MF-RL backward','MF-RL shuffle','MB-RL prior S','MB-RL prior SA')
+legend('MF-RL no replay','MF-RL backward','MF-RL shuffle','MB-RL prior sweep')
+%legend('budget=2','budget=5','budget=10','budget=15','budget=20','budget=25')
+%legend('budget=25','budget=10','budget=2')
+%legend('epsilon=0.1','epsilon=0.01','epsilon=0.001','epsilon=0.0001','epsilon=0.00001')
+%legend('epsilon=0.1','epsilon=0.01','epsilon=0.001')
+%legend('infinite budget','budget=5','budget=10','budget=20','budget=50','budget=100')
 alpha 0.5
 
 % % plot L/R sweeps
@@ -433,9 +450,10 @@ subplot(2,1,2)
 plot([durationPreShift durationPreShift],[-0.5 1.5],'--','Color', [0.5 0.5 0.5])
 hold on
 errorfill(1:durationPreShift+durationPostShift,mean(rwdrate),std(rwdrate),curveColor)
+%plot(1:durationPreShift+durationPostShift,mean(rwdrate),'Color',curveColor,'LineWidth',3)
 axis([0 durationPreShift+durationPostShift -0.5 1.5])
-ylabel('reward rate')
-xlabel('trial')
+ylabel('reward rate','FontSize',16)
+xlabel('trial','FontSize',16)
 alpha 0.5
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -448,7 +466,7 @@ propside2 = propside;
 propswide2(isnan(propside2)) = 0.5;
 errorfill(1:durationPreShift+durationPostShift,mean(propside2),std(propside2),curveColor)
 axis([0 durationPreShift+durationPostShift -0.5 1.5])
-ylabel('prop L/R side of replays')
+ylabel('prop L/R side of replays','FontSize',16)
 
 % plot L/R sweeps
 subplot(3,1,2)
@@ -458,8 +476,8 @@ propsweep2 = propsweep;
 propsweep2(isnan(propsweep2)) = 0.5;
 errorfill(1:durationPreShift+durationPostShift,mean(propsweep2),std(propsweep2),curveColor)
 axis([0 durationPreShift+durationPostShift -0.5 1.5])
-ylabel('prop L/R sweeps')
-xlabel('trial')
+ylabel('prop L/R sweeps','FontSize',16)
+xlabel('trial','FontSize',16)
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

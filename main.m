@@ -16,15 +16,40 @@
 %
 %     correspondence: firstname (dot) lastname (at) upmc (dot) fr 
 
-%clear all
-clearvars -except replayMethod M R jjj kkk tabBeta tabPerfBeta
-close all
-clc
+% %clear all
+% %clearvars -except replayMethod M R jjj kkk tabBeta tabPerfBeta
+% % for www=[2 5:5:25]
+% %     if (www ~= 10)
+% %         for kkk=0 %1:5
+% %             if (kkk ~= 3)
+% %                 for jjj=1:10
+% %                     [www kkk jjj]
+% %                     main
+% %                     close all
+% %                     save(['ReversalExperiment2019_model19_window' num2str(www) '_epsilon10-' num2str(kkk) '/ReversalExperiment2019_model19_window' num2str(www) '_epsilon10-' num2str(kkk) '_Expe' num2str(jjj) '.mat'])
+% %                     clearvars -except www jjj kkk
+% %                 end
+% %             end
+% %         end
+% %     end
+% % end
+% % www = 10;
+% % for kkk=[5 10 20 50 100]
+% %     for jjj=1:10
+% %         [kkk jjj]
+% %         main
+% %         close all
+% %         save(['ReversalExperiment2019_model19_window10_epsilon10-3_budget' num2str(kkk) '/ReversalExperiment2019_model19_window10_epsilon10-3_budget' num2str(kkk) '_Expe' num2str(jjj) '.mat'])
+% %         clearvars -except www jjj kkk
+% %     end
+% % end
+% clc
+% [www kkk jjj]
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % parameters of the replay experiment %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-replayMethod = 19;
+replayMethod = 20;
 % 0 MF-RL no replay
 % 1 basic VI (MB) loop on nS and nA (VI: Value Iteration)
 % 2 basic PI (MB) loop on nS and nA (PI: Policy Iteration)
@@ -36,7 +61,7 @@ replayMethod = 19;
 % 8 MB-RL shuffl
 % 9 MF-RL backward (Lin 1992)
 % 10 MB-RL trajectory sampling
-% 11 MB-RL prioritized sweeping
+% 11 MB-RL prioritized sweeping (state-based)
 % 12 MB-RL gamma prioritized sweeping (pred: gamma.T(s,u,s').Delta)
 % 13 MB-RL bidirectional planning
 % 14 Dyna-RL shuffled (Sutton 1990)
@@ -45,6 +70,7 @@ replayMethod = 19;
 % 17 Dyna-RL prioritized sweeping (Moore & Atkeson 1992; Peng & Williams 1993)
 % 18 MB-RL prioritized sweeping combined with policy iteration (PI)
 % 19 MB-RL prioritized sweeping combined with value iteration (VI)
+% 20 MB-RL prioritized sweeping (state,action-based)
 
 % define the Markov Decision Process (MDP) used in the multiple-T-maze task
 % of the group of Dave Redish:
@@ -54,7 +80,7 @@ M.conditionDuration = 2000; % timesteps after which we change condition
 M.logSequenceLength = 2000; % max length of stored replay sequences
 M.constraint = 1; % 1 only forward moves, 0 no wall bump, -1 no constraint
 M.departureState = 25; % departure state
-M.replayPosition = M.stata; % states where replays are allowed:
+M.replayPosition = 23; % states where replays are allowed:
 % = 1:54; % replays allowed in all states
 % = M.stata; % replays allowed in all accessible states (corridors)
 % = 25; % replays allowed only at departure state in central arm
@@ -72,9 +98,6 @@ end
 
 % define replay agent
 R = replayAgent(M);
-R.window = 10; %54; % size of window containing a number of iterations in episodic memory
-R.replayiterthreshold = 0.001; % threshold above which a cumulated change in Q-values requires another cycle of replay
-R.replaybudget = -1; % max nb of replay cycles allowed (if -1, then infinite budget)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% PRETRAINING to learn the world model %%

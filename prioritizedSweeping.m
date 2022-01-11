@@ -62,22 +62,35 @@ function [Q, sequence, bufferRPE] = prioritizedSweeping(R, sequence, bufferRPE, 
                             RPEpred = R.hatR(pred(1), aaa) + R.gamma * Qmax(x) - Q(pred(1), aaa);
                     end
                     % add (pred,RPEpred) to bufferRPE
-                    if (sum(bufferRPE(1,:)==pred(1))==0) % predecessor not already in bufferRPE
-                        if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > R.replayiterthreshold) % high priority
-                            if (replayMethod == 12)
-                                bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPEpred ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
-                            else
-                                bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
+                    switch (replayMethod)
+                        case 20 % (state,action)-based prioritized sweeping
+                            if (sum(bufferRPE(1,:)==pred(1)&bufferRPE(2,:)==aaa)==0) % predecessor not already in bufferRPE
+                                if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > R.replayiterthreshold) % high priority
+                                    bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
+                                end
+                            else % predecessor already in bufferRPE
+                                if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > bufferRPE(5,bufferRPE(1,:)==pred(1))) % higher priority than previously stored in buffer for this predecessor
+                                    bufferRPE(:,bufferRPE(1,:)==pred(1)&bufferRPE(2,:)==aaa) = [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
+                                end
                             end
-                        end
-                    else
-                        if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > bufferRPE(5,bufferRPE(1,:)==pred(1))) % higher priority than previously stored in buffer for this predecessor
-                            if (replayMethod == 12)
-                                bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPEpred ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
+                        otherwise % state-based prioritized sweeping
+                            if (sum(bufferRPE(1,:)==pred(1))==0) % predecessor not already in bufferRPE
+                                if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > R.replayiterthreshold) % high priority
+                                    if (replayMethod == 12)
+                                        bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPEpred ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
+                                    else
+                                        bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
+                                    end
+                                end
                             else
-                                bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
+                                if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > bufferRPE(5,bufferRPE(1,:)==pred(1))) % higher priority than previously stored in buffer for this predecessor
+                                    if (replayMethod == 12)
+                                        bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPEpred ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
+                                    else
+                                        bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
+                                    end
+                                end
                             end
-                        end
                     end
                     pred(1) = [];
                 end

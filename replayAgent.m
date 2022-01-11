@@ -35,9 +35,9 @@ function R = replayAgent(M)
     N    = zeros(nS, nA);
     
     %% Initialize episodic memory
-    window = 10; %54; % size of window containing a number of iterations in episodic memory
+    window = 54; % size of window containing a number of iterations in episodic memory
     replayiterthreshold = 0.001; % threshold above which a cumulated change in Q requires another iteration of replay
-    replaybudget = 10; % max nb of replay iterations allowed
+    replaybudget = -1; % max nb of replay iterations allowed
     
     % Initialize the policy with random actions for all states
     pol = randi(nA, nS, 1);

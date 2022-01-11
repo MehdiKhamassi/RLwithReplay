@@ -54,7 +54,7 @@ while (~quit)
     
     % Updating the Q function
     switch (replayMethod)
-        case {6,11,12,17,19} %% MB/DYNA prioritized sweeping
+        case {6,11,12,17,19,20} %% MB/DYNA prioritized sweeping
             if (~isempty(bufferRPE))
                 bufferCopy = bufferRPE;
                 [Q, sequence, bufferRPE] = prioritizedSweeping(R, sequence, bufferRPE, replayMethod, 0, Q);

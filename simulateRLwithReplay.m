@@ -51,7 +51,7 @@ while (letsContinue)
         % every M.conditionDuration steps)
         if (M.r(5,S) == 1) % reward currently in state 5
             M.r(5,S) = 0;
-            %M.r(53,S) = 1; % comment if extinction experiment!
+            M.r(53,S) = 1; % comment if extinction experiment!
         else % reward currently in state 53
             %M.r(53,S) = 0;
             %M.r(5,S) = 1;
@@ -87,9 +87,9 @@ while (letsContinue)
     else
         [y, r] = MDPStep(M, x, u);
     end
-    if (r > 0)
-        [iter x u y r] % logs
-    end
+%     if (r > 0)
+%         [iter x u y r] % logs
+%     end
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%
     %% model-based learning %%
@@ -134,10 +134,10 @@ while (letsContinue)
     RPE_MB = newQ - R.Q(x, u);
     Q_MB = newQ;
     switch (replayMethod)
-        case {1,2,6,8,10,11,12,13,18,19} % MB-RL methods
+        case {1,2,6,8,10,11,12,13,18,19,20} % MB-RL methods
             R.Q(x, u) = Q_MB;
             RPE = RPE_MB;
-        case {3,4,5,7,9} % MF-RL methods
+        case {0,3,4,5,7,9} % MF-RL methods
         case {14,15,16,17} % Dyna-RL methods
     end
     
@@ -147,8 +147,8 @@ while (letsContinue)
     % Update Q in a model-free manner
     [ RPE_MF, Q_MF ] = temporalDifferenceError( r, 0, 1, u, R.Q(x,:), R.Q(y,:), 1, R.alpha, R.gamma, 1, 0, 0, 0 );
     switch (replayMethod)
-        case {1,2,6,8,10,11,12,13,18,19} % MB-RL methods
-        case {3,4,5,7,9} % MF-RL methods
+        case {1,2,6,8,10,11,12,13,18,19,20} % MB-RL methods
+        case {0,3,4,5,7,9} % MF-RL methods
             R.Q(x,:) = Q_MF;
             RPE = RPE_MF(u);
         case {14,15,16,17} % Dyna-RL methods
@@ -169,17 +169,31 @@ while (letsContinue)
     logs.sequence(3, iter) = r; % storing the reward
     logs.sequence(6, iter) = y; % storing the arrival state
     % we add the (x,RPE(u)) to bufferRPE only if x is not already in the buffer
-    if ((size(bufferRPE,2) == 0)||(sum(bufferRPE(1,:)==x)==0))
-        if (abs(RPE) > R.replayiterthreshold) % high priority
-            bufferRPE = [bufferRPE [logs.sequence(1:3,iter) ; RPE ; abs(RPE) ; logs.sequence(6:7,iter)]];
-        end
-    else % y is already in bufferRPE
-        if (abs(RPE) > bufferRPE(5,bufferRPE(1,:)==x)) % higher priority
-            bufferRPE(:,bufferRPE(1,:)==x) = [logs.sequence(1:3,iter) ; RPE ; abs(RPE) ; logs.sequence(6:7,iter)];
-        end
+    switch (replayMethod)
+        case 20 % (state,action)-based prioritized sweeping
+            if ((size(bufferRPE,2) == 0)||(sum(bufferRPE(1,:)==x&bufferRPE(2,:)==u)==0))
+                if (abs(RPE) > R.replayiterthreshold) % high priority
+                    bufferRPE = [bufferRPE [logs.sequence(1:3,iter) ; RPE ; abs(RPE) ; logs.sequence(6:7,iter)]];
+                end
+            else % y is already in bufferRPE
+                if (abs(RPE) > bufferRPE(5,bufferRPE(1,:)==x&bufferRPE(2,:)==u)) % higher priority
+                    bufferRPE(:,bufferRPE(1,:)==x&bufferRPE(2,:)==u) = [logs.sequence(1:3,iter) ; RPE ; abs(RPE) ; logs.sequence(6:7,iter)];
+                end
+            end         
+        otherwise
+           if ((size(bufferRPE,2) == 0)||(sum(bufferRPE(1,:)==x)==0))
+                if (abs(RPE) > R.replayiterthreshold) % high priority
+                    bufferRPE = [bufferRPE [logs.sequence(1:3,iter) ; RPE ; abs(RPE) ; logs.sequence(6:7,iter)]];
+                end
+            else % y is already in bufferRPE
+                if (abs(RPE) > bufferRPE(5,bufferRPE(1,:)==x)) % higher priority
+                    bufferRPE(:,bufferRPE(1,:)==x) = [logs.sequence(1:3,iter) ; RPE ; abs(RPE) ; logs.sequence(6:7,iter)];
+                end
+            end 
     end
+    
     % we search for predecessors of x
-    if (((replayMethod == 6)||(replayMethod == 11)||(replayMethod == 12)||(replayMethod == 17)||(replayMethod == 18)||(replayMethod == 19))&&(abs(RPE) > R.replayiterthreshold)) % only for MB-prior methods
+    if (((replayMethod == 6)||(replayMethod == 11)||(replayMethod == 12)||(replayMethod == 17)||(replayMethod == 18)||(replayMethod == 19)||(replayMethod == 20))&&(abs(RPE) > R.replayiterthreshold)) % only for MB-prior methods
         for aaa = 1:M.nA
             pred = R.hatP(:,aaa,x)>(1/M.nS);
             indexes = (1:M.nS);
@@ -190,7 +204,7 @@ while (letsContinue)
                     case {2,18} % PI methods
                         Qpred = R.hatR(pred(1),aaa) + R.gamma * sum(reshape(R.hatP(x, aaa, :), R.nS, 1)' * V);
                         RPEpred = Qpred - R.Q(pred(1),aaa);
-                    case {6,11,12,19} % VI methods
+                    case {6,11,12,19,20} % VI methods
                         Qmax = max(R.Q, [], 2);
                         Qpred = R.hatR(x, u) + R.gamma * sum(reshape(R.hatP(x, u, :), R.nS, 1) .* Qmax);
                         RPEpred = Qpred - R.Q(pred(1),aaa);
@@ -199,22 +213,35 @@ while (letsContinue)
                         RPEpred = R.hatR(pred(1),aaa) + R.gamma * Qmax(pred(1)) - R.Q(x, aaa);
                 end
                 % add (pred,RPEpred) to bufferRPE
-                if (sum(bufferRPE(1,:)==pred(1))==0) % predecessor not already in bufferRPE
-                    if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > R.replayiterthreshold) % high priority
-                        if (replayMethod == 12)
-                            bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPEpred ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
-                        else
-                            bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
+                switch (replayMethod)
+                    case 20 % (state,action)-based prioritized sweeping
+                        if (sum(bufferRPE(1,:)==pred(1)&bufferRPE(2,:)==aaa)==0) % predecessor not already in bufferRPE
+                            if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > R.replayiterthreshold) % high priority
+                                bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
+                            end
+                        else % predecessor already in bufferRPE
+                            if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > bufferRPE(5,bufferRPE(1,:)==pred(1))) % higher priority than previously stored in buffer for this predecessor
+                                bufferRPE(:,bufferRPE(1,:)==pred(1)&bufferRPE(2,:)==aaa) = [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
+                            end
                         end
-                    end
-                else
-                    if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > bufferRPE(5,bufferRPE(1,:)==pred(1))) % highest priority
-                        if (replayMethod == 12)
-                            bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPEpred ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
+                    otherwise % state-based prioritized sweeping
+                        if (sum(bufferRPE(1,:)==pred(1))==0) % predecessor not already in bufferRPE
+                            if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > R.replayiterthreshold) % high priority
+                                if (replayMethod == 12)
+                                    bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPEpred ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
+                                else
+                                    bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
+                                end
+                            end
                         else
-                            bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
+                            if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > bufferRPE(5,bufferRPE(1,:)==pred(1))) % higher priority than previously stored in buffer for this predecessor
+                                if (replayMethod == 12)
+                                    bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPEpred ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
+                                else
+                                    bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
+                                end
+                            end
                         end
-                    end
                 end
                 pred(1) = [];
             end
@@ -308,7 +335,7 @@ while (letsContinue)
                 logs.replaySequence = [logs.replaySequence ; [iter nbReplayCycle durationReplaySequence ones(1,R.window-3)] ; [replaybuffer(1,:) ones(1,R.window-durationReplaySequence)*-1]]; % we store the full sequence of replay
                 
             %% MB/DYNA inference as replay methods
-            case {6,11,12,17} % MB/DYNA prioritized sweeping
+            case {6,11,12,17,20} % MB/DYNA prioritized sweeping
                 if (~isempty(bufferRPE))
                     replaybuffer = bufferRPE(:,max(1,end-R.window+1):end);
                     [~, index] = sort(replaybuffer(5,:),'descend');
