@@ -27,3 +27,7 @@ Repeat the same process to save at least 10 experiments for a given model.
 After doing this, you can plot article figures using the script called plotFigure10experimentsPerAlgo.m. At the top of this script, first indicate the name of the tested model, the name of your directory, as well as a few task parameters.
 
 Now you can play with the code to compare different models. You can also modify the parameters of the model in function replayAgent.m. You can also modify the maze and parameters of the task in function MDP.m.
+
+## License
+
+This is free software: you can redistribute it and/or modify it under the terms of the BSD 2-clause License. A copy of this license is provided in LICENSE.txt.
