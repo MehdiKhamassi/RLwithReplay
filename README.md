@@ -30,4 +30,4 @@ Now you can play with the code to compare different models. You can also modify 
 
 ## License
 
-This is free software: you can redistribute it and/or modify it under the terms of the BSD 2-clause License. A copy of this license is provided in LICENSE.txt.
+This is free software: you can redistribute it and/or modify it under the terms of the BSD 2-clause License. A copy of this license is provided in [LICENSE.txt](https://github.com/MehdiKhamassi/RLwithReplay/blob/master/LICENSE).
