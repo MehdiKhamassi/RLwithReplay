@@ -8,7 +8,7 @@ The code is currently adapted to simulate the reinforcement learning models in a
 	
 > The second version of this code (tag KhamassiGirard2020) goes with the following publication: Khamassi, Girard (2020) Modeling awake hippocampal reactivations with model-based bidirectional search. Biological Cybernetics (special issue "Latest Advances in Understanding Complex Spatial Navigation"). Biological Cybernetics, 114(2):231-248.
 	
-> The third version of this code (tag MassiEtAl2022) goes with the following submission: Massi et al. (2022) Model-based and model-free replay mechanisms for reinforcement learning in neurorobotics. Submitted.
+> The third version of this code (tag MassiEtAl2022) goes with the following submission: Massi, Barthélémy, Mailly, Dromnelle, Canitrot, Poniatowski, Girard, Khamassi (2022) Model-based and model-free replay mechanisms for reinforcement learning in neurorobotics. Front. Neurorobot. 16:864380. doi: 10.3389/fnbot.2022.864380.
 
 ## Questions?
 
