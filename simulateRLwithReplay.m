@@ -116,8 +116,8 @@ while (letsContinue)
                 vectR(xxx) = R.hatR(xxx, pol(xxx));
                 for yyy=1:R.nS
                     carreP(xxx, yyy) = R.hatP(xxx, pol(xxx), yyy);
-                end;
-            end;
+                end
+            end
             %V = inv(eye(R.nS, R.nS) - R.gamma * carreP) * vectR;
             V = (eye(R.nS, R.nS) - R.gamma * carreP) \ vectR;
 %             % Performing PI update
@@ -128,6 +128,7 @@ while (letsContinue)
 %             end
             newQ = R.hatR(x, u) + R.gamma * sum(reshape(R.hatP(x, u, :), R.nS, 1)' * V);
         otherwise % VI, MF or Dyna methods
+            V = [];
             Qmax = max(R.Q, [], 2);
             newQ = R.hatR(x, u) + R.gamma * sum(reshape(R.hatP(x, u, :), R.nS, 1) .* Qmax);
     end
@@ -194,58 +195,7 @@ while (letsContinue)
     
     % we search for predecessors of x
     if (((replayMethod == 6)||(replayMethod == 11)||(replayMethod == 12)||(replayMethod == 17)||(replayMethod == 18)||(replayMethod == 19)||(replayMethod == 20))&&(abs(RPE) > R.replayiterthreshold)) % only for MB-prior methods
-        for aaa = 1:M.nA
-            pred = R.hatP(:,aaa,x)>(1/M.nS);
-            indexes = (1:M.nS);
-            pred = indexes(pred);
-            while (~isempty(pred))
-                % compute RPE for each pred
-                switch (replayMethod)
-                    case {2,18} % PI methods
-                        Qpred = R.hatR(pred(1),aaa) + R.gamma * sum(reshape(R.hatP(x, aaa, :), R.nS, 1)' * V);
-                        RPEpred = Qpred - R.Q(pred(1),aaa);
-                    case {6,11,12,19,20} % VI methods
-                        Qmax = max(R.Q, [], 2);
-                        Qpred = R.hatR(x, u) + R.gamma * sum(reshape(R.hatP(x, u, :), R.nS, 1) .* Qmax);
-                        RPEpred = Qpred - R.Q(pred(1),aaa);
-                    otherwise % MF or Dyna methods
-                        Qmax = max(R.Q, [], 2);
-                        RPEpred = R.hatR(pred(1),aaa) + R.gamma * Qmax(pred(1)) - R.Q(x, aaa);
-                end
-                % add (pred,RPEpred) to bufferRPE
-                switch (replayMethod)
-                    case 20 % (state,action)-based prioritized sweeping
-                        if (sum(bufferRPE(1,:)==pred(1)&bufferRPE(2,:)==aaa)==0) % predecessor not already in bufferRPE
-                            if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > R.replayiterthreshold) % high priority
-                                bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
-                            end
-                        else % predecessor already in bufferRPE
-                            if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > bufferRPE(5,bufferRPE(1,:)==pred(1))) % higher priority than previously stored in buffer for this predecessor
-                                bufferRPE(:,bufferRPE(1,:)==pred(1)&bufferRPE(2,:)==aaa) = [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
-                            end
-                        end
-                    otherwise % state-based prioritized sweeping
-                        if (sum(bufferRPE(1,:)==pred(1))==0) % predecessor not already in bufferRPE
-                            if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > R.replayiterthreshold) % high priority
-                                if (replayMethod == 12)
-                                    bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPEpred ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
-                                else
-                                    bufferRPE = [bufferRPE [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0]];
-                                end
-                            end
-                        else
-                            if ((R.hatP(pred(1),aaa,x) * abs(RPEpred)) > bufferRPE(5,bufferRPE(1,:)==pred(1))) % higher priority than previously stored in buffer for this predecessor
-                                if (replayMethod == 12)
-                                    bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.gamma * R.hatP(pred(1),aaa,x) * RPEpred ; R.gamma * R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
-                                else
-                                    bufferRPE(:,bufferRPE(1,:)==pred(1)) = [pred(1) ; aaa ; 0 ; R.hatP(pred(1),aaa,x) * RPEpred ; R.hatP(pred(1),aaa,x) * abs(RPEpred) ; x ; 0];
-                                end
-                            end
-                        end
-                end
-                pred(1) = [];
-            end
-        end
+        bufferRPE = searchPredecessor(R, bufferRPE, replayMethod, V, R.Q, x);
     end
     
     %%%%%%%%%%%%%
